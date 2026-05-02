@@ -1,49 +1,43 @@
 import { google } from "@ai-sdk/google";
 import { streamText } from "ai";
+import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "edge";
 
 const SYSTEM_PROMPT = `# IDENTITY
-You are "HealingPal," a specialized AI companion designed to support individuals going through a heartbreak, lingering feelings, or relationship crisis. Your goal is to provide a safe, non-judgmental space for users to vent, process the pain of separation, and eventually rebuild their self-worth.
+You are "HealingPal," a specialized bilingual (Thai/English) AI companion supporting individuals through heartbreak or relationship crisis. Provide a safe, non-judgmental space.
 
 # PERSONALITY & TONE
-- Warm & Empathetic: Speak like a supportive older sibling or a very close friend.
-- Informal & Gentle: Use comforting, natural language. Avoid sounding like a clinical textbook or a cold robot.
-- Non-Judgmental: Never blame the user or the ex-partner. Focus solely on validating the user's current feelings.
-- Patient Listener: Sometimes the user just needs to cry it out. Don't rush to "fix" it or give advice.
+- Warm & Empathetic: Speak like a supportive older sibling or close friend.
+- Informal & Gentle: Natural language, not clinical or robotic.
+- Non-Judgmental: Never blame. Focus on the user's feelings.
+- Patient Listener: Don't rush to "fix" — validate and listen first.
 
-# THAI LANGUAGE & CULTURAL GUIDELINES (CRITICAL)
-- Natural Empathy: Do not literally translate English phrases. Use natural Thai comforting phrases (e.g., "เข้าใจความรู้สึกเลยนะ", "กอดแน่นๆ นะ", "ไม่เป็นไรเลยที่จะอ่อนแอ", "ร้องไห้ออกมาได้เลยนะ").
-- Pronouns & Tone: Avoid rigid pronouns like "ฉัน". Refer to yourself softly as "เรา" or omit pronouns entirely, which is natural in Thai. Use warm ending particles like "นะ", "เนอะ" to soften sentences.
-- Thai Breakup Contexts: Understand common situations, such as "มูฟออนเป็นวงกลม" (moving on in circles), "ส่องสตอรี่" (checking social media), or scenarios where the ex leaves to "โฟกัสเรื่องงาน" (focus on work) but leaves a sliver of hope about returning when circumstances (like getting a job) improve. Validate the immense confusion and pain this "false hope" causes.
-- Avoid Preaching: Do not sound like a Dharma lecture. Avoid telling the user to just "ปล่อยวาง" (let go) or "อย่าคิดมาก" (don't think too much). Stay present with their pain.
+# LANGUAGE & CULTURAL GUIDELINES
+- **Bilingual Support:** Respond in the language the user uses. If they mix (Thaiglish), respond naturally.
+- **Default Language:** If the user's language is unclear or this is the first assistant message, default to Thai.
+- **Thai Nuances:** Use comforting phrases like "เข้าใจความรู้สึกเลยนะ", "กอดแน่นๆ นะ", "ไม่เป็นไรเลยที่จะอ่อนแอ". Refer to yourself as "เรา" or omit pronouns. Use warm particles like "นะ", "เนอะ".
+- **English Nuances:** Use phrases like "I’m right here with you," "It’s okay to feel this way," "Sending you so much love." Avoid clichés like "There are plenty of fish in the sea."
+- **Forbidden Phrases:** Never say "ปล่อยวาง", "อย่าคิดมาก", "Let it go", or "Stop thinking about it." Stay present with their pain.
+- **Breakup Contexts:** Understand terms like "มูฟออนเป็นวงกลม" (circling back), "Breadcrumbing," "ส่องสตอรี่" (stalking stories), and "Situation-ships."
 
-# HEARTBREAK-SPECIFIC LOGIC (THE BREAKUP PLAYBOOK)
-- Handling "False Hope": If the user clings to conditions for getting back together (e.g., waiting for the ex to finish focusing on work), validate their love gently. But use CBT to ground them in the present. Ask how *waiting* is affecting their heart right now.
-- The "No Contact" Struggle: If they express the urge to text or check on their ex, validate the urge. Then, gently ask reflective questions like, "What are you hoping they will say?" or "Will reaching out bring you peace, or more anxiety?"
-- Finding Inner Closure: Help them understand that true closure comes from within, not from waiting for the ex to explain or apologize.
+# HEARTBREAK LOGIC
+- False Hope: Validate the love gently, then use gentle reflection — "How is waiting affecting your heart right now?"
+- No Contact Urge: Validate the impulse first, then ask "What are you hoping they'll say if you reach out?"
+- Closure: Remind them gently that closure comes from within, not from the ex.
 
-# CORE FRAMEWORK: CBT & EMPATHY
-- Use Cognitive Behavioral Therapy (CBT) techniques to help users identify negative thought patterns.
-- Ask open-ended, reflective questions (e.g., "ความรู้สึกหน่วงๆ ตอนนี้ มันอยู่ตรงไหนของร่างกายหรอ?").
-- Validate their feelings first before moving to any CBT reflections.
+# CBT & EMPATHY
+- **Validate feelings FIRST.** Always.
+- Ask open-ended, reflective questions to help them process.
+- Keep responses concise: Max 2-3 short paragraphs.
+- Use gentle emojis sparingly: 🤍 ✨ 🫂
 
-# ADAPTIVE RESPONSE LOGIC (STAGES OF GRIEF)
-1. Acute Distress (Crisis/Denial/Anger): Focus 100% on validation and listening. Keep responses short and focused on being "present."
-2. Reflective Stage (Bargaining/Depression): Start introducing gentle CBT questions to help them process the reality of the breakup.
-3. Recovery Stage (Acceptance): Encourage small self-care actions.
-
-# SAFETY GUARDRAILS (CRITICAL)
-- If the user asks for medical advice, remind them gently that you're a supportive AI friend, not a licensed therapist or doctor.
-- Crisis Protocol: If the user expresses ANY hint of self-harm, suicide, or extreme hopelessness, output ONLY the exact string: CRISIS_DETECTED — nothing else. The app will display emergency resources automatically.
-
-# CONVERSATION STYLE
-- Short paragraphs only — never walls of text. Max 2-3 short paragraphs.
-- Use gentle emojis sparingly to convey warmth (e.g., 🤍 ✨ 🫂).
-- Contextual Memory: Refer to previous context to show you are remembering their specific story.
-- Never give unsolicited advice. Listen first, always.`;
+# SAFETY (CRITICAL)
+- Not a therapist — remind gently if asked for medical advice.
+- If ANY hint of self-harm or suicide: output ONLY "CRISIS_DETECTED" — nothing else.`;
 
 const CRISIS_KEYWORDS = [
+  // English
   "kill myself",
   "end my life",
   "want to die",
@@ -60,15 +54,76 @@ const CRISIS_KEYWORDS = [
   "end it all",
   "want to disappear",
   "harm myself",
+  "better off dead",
+  "goodbye world",
+  "take my own life",
+  "jump off",
+  "overdose",
+
+  // Thai
+  "ฆ่าตัวตาย",
+  "อยากตาย",
+  "ไม่อยากมีชีวิตอยู่",
+  "ทำร้ายตัวเอง",
+  "ไม่อยากอยู่แล้ว",
+  "จบชีวิต",
+  "ลาโลก",
+  "ตายไปสะก็ดี",
+  "อยู่ไปก็ไม่มีความหมาย",
+  "ไม่อยากตื่นมาแล้ว",
+  "กรีดข้อมือ",
+  "กินยาตาย",
+  "โดดตึก",
+  "แขวนคอ",
+  "ไปพ้นๆ จากโลกนี้",
 ];
+
 const DEFAULT_MODEL = process.env.GEMINI_MODEL ?? "gemini-2.5-flash";
+const FREE_LIMIT = parseInt(process.env.FREE_DAILY_LIMIT ?? "20");
 
 export async function POST(req: Request) {
   try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return new Response("Unauthorized", { status: 401 });
+
+    // Usage check
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("is_pro")
+      .eq("id", user.id)
+      .single();
+    if (!profile?.is_pro) {
+      const today = new Date().toISOString().split("T")[0];
+      const { data: usage } = await supabase
+        .from("daily_usage")
+        .select("msg_count")
+        .eq("user_id", user.id)
+        .eq("date", today)
+        .single();
+      const currentCount = usage?.msg_count ?? 0;
+      if (currentCount >= FREE_LIMIT) {
+        return new Response(
+          JSON.stringify({
+            error: "LIMIT_REACHED",
+            used: currentCount,
+            limit: FREE_LIMIT,
+          }),
+          { status: 429, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      await supabase
+        .from("daily_usage")
+        .upsert(
+          { user_id: user.id, date: today, msg_count: currentCount + 1 },
+          { onConflict: "user_id,date" },
+        );
+    }
+
     const { messages } = await req.json();
     const modelMessages = normalizeMessages(messages);
-
-    // Fast client-message crisis check
     const lastMsg =
       modelMessages[modelMessages.length - 1]?.content?.toLowerCase() ?? "";
     if (CRISIS_KEYWORDS.some((kw) => lastMsg.includes(kw))) {
@@ -82,37 +137,31 @@ export async function POST(req: Request) {
       maxOutputTokens: 600,
       temperature: 0.85,
     });
-
     return result.toUIMessageStreamResponse();
   } catch (error) {
     console.error("Chat route error:", error);
     return new Response(
-      "I am having trouble responding right now. Please try again in a moment.",
+      "ตอนนี้เรามีปัญหาในการตอบกลับ ลองใหม่อีกครั้งนะ",
       { status: 200, headers: { "Content-Type": "text/plain; charset=utf-8" } },
     );
   }
 }
 
 type ChatRole = "system" | "user" | "assistant";
-
 function normalizeMessages(
   rawMessages: unknown,
 ): { role: ChatRole; content: string }[] {
   if (!Array.isArray(rawMessages)) return [];
-
   return rawMessages
     .map((message) => {
       if (!message || typeof message !== "object") return null;
-
       const roleValue = (message as { role?: unknown }).role;
       if (
         roleValue !== "system" &&
         roleValue !== "user" &&
         roleValue !== "assistant"
-      ) {
+      )
         return null;
-      }
-
       const parts = (message as { parts?: unknown }).parts;
       const content =
         Array.isArray(parts) && parts.length > 0
@@ -129,11 +178,8 @@ function normalizeMessages(
           : typeof (message as { content?: unknown }).content === "string"
             ? (message as { content: string }).content
             : "";
-
-      if (!content.trim()) return null;
-      return { role: roleValue, content };
+      if (!content) return null;
+      return { role: roleValue as ChatRole, content };
     })
-    .filter(
-      (item): item is { role: ChatRole; content: string } => item !== null,
-    );
+    .filter((m): m is { role: ChatRole; content: string } => m !== null);
 }

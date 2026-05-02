@@ -2,17 +2,13 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "HealingPal — You're not alone 🤍",
-  description: "A safe, warm AI companion to help you heal from heartbreak.",
+  title: "HealingPal — ไม่ต้องอยู่คนเดียว 🤍",
+  description: "ผู้ช่วย AI ที่ปลอดภัยและอบอุ่น พร้อมเยียวยาหัวใจทั้งภาษาไทยและอังกฤษ",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="th">
       <body className="min-h-screen">{children}</body>
     </html>
   );
