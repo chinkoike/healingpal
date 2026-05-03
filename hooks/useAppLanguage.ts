@@ -1,18 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  AppLanguage,
-  DEFAULT_LANGUAGE,
-  LANGUAGE_STORAGE_KEY,
-  normalizeLanguage,
-} from "@/lib/i18n";
+import { AppLanguage, DEFAULT_LANGUAGE, LANGUAGE_STORAGE_KEY, normalizeLanguage } from "@/lib/i18n";
 
 export function useAppLanguage() {
   const [language, setLanguage] = useState<AppLanguage>(() => {
     if (typeof window === "undefined") return DEFAULT_LANGUAGE;
-    const stored = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
-    return normalizeLanguage(stored);
+    return normalizeLanguage(window.localStorage.getItem(LANGUAGE_STORAGE_KEY));
   });
 
   useEffect(() => {
